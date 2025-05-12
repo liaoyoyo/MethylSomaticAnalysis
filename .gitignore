@@ -1,0 +1,30 @@
+# 1. 作業系統或編輯器暫存
+.DS_Store
+Thumbs.db
+
+# 2. VSCode 設定
+.vscode/
+
+# 3. CMake 相關產物
+CMakeFiles/
+
+# 4. 建置輸出（Binary／Object／Library）
+build/
+bin/
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.exe
+
+# 5. 日誌檔
+*.log
+
+# 6. 其他資料夾（視專案需求）
+# 若不想把「results/」結果檔也放到 Git，就啟用下面這行
+results/
+
+# 7. 臨時檔、備份檔
+*~
+*.swp

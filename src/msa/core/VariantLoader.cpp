@@ -104,6 +104,7 @@ std::vector<msa::VcfVariantInfo> VariantLoader::loadVCFs(
         // 統計變數
         int total_variants = 0;
         int filtered_variants = 0;
+        int variants_before = variants.size();
         
         // 迭代讀取VCF記錄
         while (bcf_read(vcf_fp, vcf_hdr, vcf_record) == 0) {
@@ -195,10 +196,11 @@ std::vector<msa::VcfVariantInfo> VariantLoader::loadVCFs(
         bcf_hdr_destroy(vcf_hdr);
         bcf_close(vcf_fp);
         
+        int variants_added = variants.size() - variants_before;
         LOG_INFO("VariantLoader", "已處理VCF檔案: " + vcfPath + 
                            ", 共 " + std::to_string(total_variants) + " 個變異, " + 
                            std::to_string(filtered_variants) + " 個被過濾, " + 
-                           std::to_string(variants.size()) + " 個保留");
+                           std::to_string(variants_added) + " 個保留");
     }
     
     // 對變異進行排序

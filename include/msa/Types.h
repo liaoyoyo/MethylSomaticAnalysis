@@ -29,7 +29,7 @@ struct Config {
     bool gzip_output = true;              // 是否壓縮輸出
     int max_read_depth = 10000;           // 最大讀取深度
     int max_ram_gb = 32;                  // 最大RAM使用量(GB)
-    std::string log_level = "info";       // 日誌級別
+    std::string log_level = "TRACE";       // 日誌級別
     
     // BAM標籤檢測結果
     bool tumor_has_methyl_tags = false;   // 腫瘤BAM是否有甲基化標籤

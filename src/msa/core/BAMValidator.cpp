@@ -85,25 +85,41 @@ bool BAMValidator::checkAllInputFiles(msa::Config& config) {
 }
 
 bool BAMValidator::checkMethylationTags(const std::string& bamPath, htsFile* fp, bam_hdr_t* hdr, msa::Config& config) {
-    int mm_count = sampleCheckTag(bamPath, fp, hdr, "MM", 100, bamPath == config.tumor_bam);
-    int ml_count = sampleCheckTag(bamPath, fp, hdr, "ML", 100, bamPath == config.tumor_bam);
-    
-    std::ostringstream ss;
-    ss << "BAM檔案 " << bamPath << " 檢查結果: MM標籤發現於 " << mm_count 
-       << " 條讀段, ML標籤發現於 " << ml_count << " 條讀段 (取樣100條)";
-    LOG_INFO("BAMValidator", ss.str());
-    
-    bool has_meth_tags = (mm_count > 0 && ml_count > 0);
-    
-    // 更新配置中的標籤狀態
-    if (bamPath == config.tumor_bam) {
-        config.tumor_has_methyl_tags = has_meth_tags;
-    } else if (bamPath == config.normal_bam) {
-        config.normal_has_methyl_tags = has_meth_tags;
-    }
-    
-    return has_meth_tags;
-}
+       // 先重置文件指針
+       bgzf_seek(fp->fp.bgzf, 0, SEEK_SET);
+       
+       bam1_t* read = bam_init1();
+       int found_mm = 0, found_ml = 0;
+       int count = 0;
+       
+       while (sam_read1(fp, hdr, read) >= 0 && count < 100) {
+           count++;
+           
+           // 檢查標籤
+           uint8_t* mm_tag = bam_aux_get(read, "MM");
+           uint8_t* ml_tag = bam_aux_get(read, "ML");
+           
+           if (mm_tag != nullptr) found_mm++;
+           if (ml_tag != nullptr) found_ml++;
+       }
+       
+       bam_destroy1(read);
+       
+       LOG_INFO("BAMValidator", "BAM檔案 " + bamPath + " 檢查結果: MM標籤發現於 " + 
+                std::to_string(found_mm) + " 條讀段, ML標籤發現於 " + 
+                std::to_string(found_ml) + " 條讀段 (取樣" + std::to_string(count) + "條)");
+       
+       bool has_methyl_tags = (found_mm > 0 && found_ml > 0);
+       
+       // 更新配置
+       if (bamPath == config.tumor_bam) {
+           config.tumor_has_methyl_tags = has_methyl_tags;
+       } else if (bamPath == config.normal_bam) {
+           config.normal_has_methyl_tags = has_methyl_tags;
+       }
+       
+       return has_methyl_tags;
+   }
 
 bool BAMValidator::checkHaplotypeTags(const std::string& bamPath, htsFile* fp, bam_hdr_t* hdr, msa::Config& config) {
     int hp_count = sampleCheckTag(bamPath, fp, hdr, "HP", 100, bamPath == config.tumor_bam);

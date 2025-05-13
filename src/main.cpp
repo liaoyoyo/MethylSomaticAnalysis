@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
     std::cout << "---------------------------------------" << std::endl;
     
     // 初始化日誌管理器
-    msa::utils::LogManager::getInstance().initialize(msa::utils::LogLevel::INFO, "msa.log");
+    msa::utils::LogManager::getInstance().initialize(msa::utils::LogLevel::TRACE, "msa.log");
     LOG_INFO("Main", "初始化MethylSomaticAnalysis...");
     
     // 解析命令列參數
@@ -120,9 +120,12 @@ int main(int argc, char** argv) {
     mem_pool.initialize(100);  // 預分配100個bam1_t物件
     
     // 為每個VCF檔案執行分析
-    for (const auto& vcf_file : config.vcf_files) {
-        std::string vcf_base_name = fs::path(vcf_file).stem().string();
-        LOG_INFO("Main", "開始處理VCF檔案: " + vcf_file);
+    LOG_INFO("Main", "共有 " + std::to_string(config.vcf_files.size()) + " 個VCF檔案需要處理");
+    for (size_t vcf_idx = 0; vcf_idx < config.vcf_files.size(); ++vcf_idx) {
+        const auto& vcf_file = config.vcf_files[vcf_idx];
+        std::string vcf_base_name = ConfigParser::getBasename(vcf_file);
+        LOG_INFO("Main", "開始處理VCF檔案 [" + std::to_string(vcf_idx+1) + "/" + 
+                 std::to_string(config.vcf_files.size()) + "]: " + vcf_file);
         
         // 載入變異信息
         VariantLoader variant_loader;
@@ -195,13 +198,16 @@ int main(int argc, char** argv) {
         } else {
             LOG_INFO("Main", "已成功匯出結果到 " + config.outdir + "/" + vcf_base_name);
         }
+        
+        LOG_INFO("Main", "VCF檔案 [" + std::to_string(vcf_idx+1) + "/" + 
+                 std::to_string(config.vcf_files.size()) + "] 處理完成: " + vcf_file);
     }
     
     // 計算運行時間
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
     
-    LOG_INFO("Main", "分析完成! 總運行時間: " + std::to_string(duration) + " 秒");
+    LOG_INFO("Main", "所有VCF檔案分析完成! 總運行時間: " + std::to_string(duration) + " 秒");
     LOG_INFO("Main", "結果保存在目錄: " + config.outdir);
     
     return 0;

@@ -26,7 +26,7 @@ bool ReportExporter::exportResults(const msa::AnalysisResults& results, const st
         return false;
     }
     
-    LOG_INFO("ReportExporter", "開始匯出結果至目錄: " + outputDir);
+    LOG_INFO("ReportExporter", "開始匯出VCF[" + vcf_source_id + "]的結果至目錄: " + outputDir);
     
     // 匯出全域摘要指標
     if (!exportGlobalSummary(results.global_metrics, outputDir)) {

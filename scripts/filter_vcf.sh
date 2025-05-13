@@ -71,3 +71,11 @@ for snv in "${SNV_FILES[@]}"; do
 
     echo "完成：${OUTPUT_FILE}.gz 及索引 ${OUTPUT_FILE}.gz.tbi"
 done
+
+# 只保留 chr19 的 snv_tp
+bcftools view -r chr19 filtered_snv_tp.vcf.gz -Oz -o filtered_snv_tp_chr19.vcf.gz
+tabix -p vcf filtered_snv_tp_chr19.vcf.gz
+bcftools view -r chr19 filtered_snv_fp.vcf.gz -Oz -o filtered_snv_fp_chr19.vcf.gz
+tabix -p vcf filtered_snv_fp_chr19.vcf.gz
+bcftools view -r chr19 filtered_snv_fn.vcf.gz -Oz -o filtered_snv_fn_chr19.vcf.gz
+tabix -p vcf filtered_snv_fn_chr19.vcf.gz

@@ -8,6 +8,11 @@
 #include <numeric>
 #include <iomanip>
 
+// 使用預處理器檢查是否編譯時啟用了OpenMP
+#ifdef HAVE_OPENMP
+#include <omp.h>  // 添加OpenMP頭文件
+#endif
+
 // 使用正確的命名空間
 using namespace msa::utils;
 
@@ -59,7 +64,7 @@ std::vector<msa::MethylationSiteDetail> SomaticMethylationAnalyzer::filterSitesB
         return site.chrom + ":" + std::to_string(site.methyl_pos) + ":" + site.bam_source_id;
     };
     
-    // 統計每個位點在正反鏈的覆蓋數
+    // 統計每個位點在正反鏈的覆蓋數 - 這部分不適合並行化，因為需要同時更新計數器
     for (const auto& site : sites) {
         std::string pos_key = getPositionKey(site);
         position_strand_counts[pos_key][site.strand]++;
@@ -79,14 +84,39 @@ std::vector<msa::MethylationSiteDetail> SomaticMethylationAnalyzer::filterSitesB
         }
     }
     
-    // 過濾出符合要求的位點
+    // 過濾出符合要求的位點 - 可以並行處理
     std::vector<msa::MethylationSiteDetail> filtered_sites;
+    filtered_sites.reserve(sites.size()); // 預分配空間
+
+#ifdef HAVE_OPENMP
+    #pragma omp parallel
+    {
+        // 每個執行緒使用局部向量存儲結果
+        std::vector<msa::MethylationSiteDetail> local_filtered;
+        
+        #pragma omp for nowait
+        for (size_t i = 0; i < sites.size(); ++i) {
+            std::string pos_key = getPositionKey(sites[i]);
+            if (valid_positions.count(pos_key)) {
+                local_filtered.push_back(sites[i]);
+            }
+        }
+        
+        // 合併每個執行緒的結果
+        #pragma omp critical
+        {
+            filtered_sites.insert(filtered_sites.end(), local_filtered.begin(), local_filtered.end());
+        }
+    }
+#else
+    // 非OpenMP模式 - 順序處理
     for (const auto& site : sites) {
         std::string pos_key = getPositionKey(site);
         if (valid_positions.count(pos_key)) {
             filtered_sites.push_back(site);
         }
     }
+#endif
     
     return filtered_sites;
 }
@@ -113,13 +143,40 @@ std::vector<msa::SomaticVariantMethylationSummary> SomaticMethylationAnalyzer::g
         groupReadCounts[group_key].insert(site.read_id);
     }
     
-    // 生成Level 2摘要
-    std::vector<msa::SomaticVariantMethylationSummary> summaries;
+    // 轉換為可並行處理的結構
+    std::vector<std::pair<std::string, std::vector<msa::MethylationSiteDetail>>> groups;
+    std::vector<std::pair<std::string, std::set<std::string>>> read_counts;
     
-    for (const auto& [group_key, group_sites] : groupedSites) {
+    for (const auto& [key, sites] : groupedSites) {
+        groups.push_back({key, sites});
+    }
+    
+    for (const auto& [key, counts] : groupReadCounts) {
+        read_counts.push_back({key, counts});
+    }
+    
+    // 生成Level 2摘要 - 使用OpenMP並行處理
+    std::vector<msa::SomaticVariantMethylationSummary> summaries(groups.size());
+    
+#ifdef HAVE_OPENMP
+    #pragma omp parallel for schedule(dynamic)
+#endif
+    for (size_t i = 0; i < groups.size(); ++i) {
+        const auto& group_key = groups[i].first;
+        const auto& group_sites = groups[i].second;
+        
         // 跳過沒有足夠位點的組
         if (group_sites.empty()) {
             continue;
+        }
+        
+        // 尋找對應的讀段計數
+        size_t read_count_idx = 0;
+        for (size_t j = 0; j < read_counts.size(); ++j) {
+            if (read_counts[j].first == group_key) {
+                read_count_idx = j;
+                break;
+            }
         }
         
         // 使用第一個站點獲取基本信息
@@ -136,7 +193,7 @@ std::vector<msa::SomaticVariantMethylationSummary> SomaticMethylationAnalyzer::g
         summary.haplotype_tag = first_site.haplotype_tag;
         
         // 計算支持該摘要的讀段數量
-        summary.supporting_read_count = groupReadCounts[group_key].size();
+        summary.supporting_read_count = read_counts[read_count_idx].second.size();
         
         // 計算甲基化位點數量
         summary.methyl_sites_count = group_sites.size();
@@ -163,8 +220,17 @@ std::vector<msa::SomaticVariantMethylationSummary> SomaticMethylationAnalyzer::g
             summary.strand = '.';  // 混合或未知
         }
         
-        summaries.push_back(summary);
+        summaries[i] = summary;
     }
+    
+    // 過濾掉未處理的空記錄
+    summaries.erase(
+        std::remove_if(summaries.begin(), summaries.end(), 
+                      [](const msa::SomaticVariantMethylationSummary& s) { 
+                          return s.methyl_sites_count == 0; 
+                      }),
+        summaries.end()
+    );
     
     return summaries;
 }
@@ -192,17 +258,16 @@ std::vector<msa::AggregatedHaplotypeStats> SomaticMethylationAnalyzer::generateL
         grouped_methylation[group_key][summary.vcf_source_id].push_back(summary.mean_methylation);
     }
     
-    // 生成Level 3統計
-    std::vector<msa::AggregatedHaplotypeStats> stats;
-    
     // 獲取唯一VCF來源
     std::set<std::string> vcf_sources;
     for (const auto& summary : level2Summary) {
         vcf_sources.insert(summary.vcf_source_id);
     }
     
-    // 對每個分組生成統計
-    for (const auto& [group_key, vcf_methyl_values] : grouped_methylation) {
+    // 轉換為可並行處理的結構
+    std::vector<std::tuple<std::string, std::string, std::string, std::map<std::string, std::vector<float>>>> groups;
+    
+    for (const auto& [group_key, vcf_values] : grouped_methylation) {
         // 解析分組鍵
         std::string haplotype_group, bam_source, variant_type_group;
         {
@@ -211,6 +276,18 @@ std::vector<msa::AggregatedHaplotypeStats> SomaticMethylationAnalyzer::generateL
             std::getline(ss, bam_source, ':');
             std::getline(ss, variant_type_group, ':');
         }
+        
+        groups.push_back(std::make_tuple(haplotype_group, bam_source, variant_type_group, vcf_values));
+    }
+    
+    // 對每個分組並行生成統計
+    std::vector<msa::AggregatedHaplotypeStats> stats(groups.size());
+    
+#ifdef HAVE_OPENMP
+    #pragma omp parallel for schedule(dynamic)
+#endif
+    for (size_t i = 0; i < groups.size(); ++i) {
+        auto& [haplotype_group, bam_source, variant_type_group, vcf_methyl_values] = groups[i];
         
         // 創建聚合統計
         msa::AggregatedHaplotypeStats stat;
@@ -251,12 +328,9 @@ std::vector<msa::AggregatedHaplotypeStats> SomaticMethylationAnalyzer::generateL
                 stat.difference = 0.0f;
                 stat.p_value = 1.0f;
             }
-        } else {
-            stat.difference = 0.0f;
-            stat.p_value = 1.0f;
         }
         
-        stats.push_back(stat);
+        stats[i] = stat;
     }
     
     return stats;

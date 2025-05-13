@@ -16,6 +16,14 @@ FetchContent_MakeAvailable(cxxopts)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 尋找OpenMP
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+  message(STATUS "OpenMP found: ${OpenMP_CXX_VERSION}")
+else()
+  message(WARNING "OpenMP not found, parallel execution will be disabled")
+endif()
+
 # 編譯選項
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -93,6 +101,12 @@ target_link_libraries(msa
     Threads::Threads       # 多執行緒支援
 )
 
+# 如果找到OpenMP，添加OpenMP支持
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(msa PRIVATE OpenMP::OpenMP_CXX)
+  target_compile_definitions(msa PRIVATE HAVE_OPENMP)
+endif()
+
 # 安裝規則
 install(TARGETS msa DESTINATION bin)
 
@@ -109,5 +123,6 @@ message(STATUS "C++ compiler:      ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER
 message(STATUS "htslib include:    ${HTSLIB_INCLUDE_DIR}")
 message(STATUS "htslib library:    ${HTSLIB_LIBRARY}")
 message(STATUS "cxxopts version:   v3.2.1 (via FetchContent)")
+message(STATUS "OpenMP support:    ${OpenMP_CXX_FOUND}")
 message(STATUS "Build tests:       ${BUILD_TESTS}")
 message(STATUS "Install prefix:    ${CMAKE_INSTALL_PREFIX}")

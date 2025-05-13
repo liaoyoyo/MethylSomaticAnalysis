@@ -8,6 +8,7 @@
 #include <thread>
 #include <condition_variable>
 #include <atomic>
+#include <unordered_map>
 
 namespace msa::utils {
 
@@ -58,6 +59,13 @@ public:
      * @return std::string 統計信息字串
      */
     std::string getStats() const;
+    
+    /**
+     * @brief 獲取執行緒本地的bam1_t緩存
+     * @param capacity 每個執行緒的初始容量
+     * @return std::vector<bam1_t*>& 執行緒本地的bam1_t緩存
+     */
+    std::vector<bam1_t*>& getThreadLocalCache(size_t capacity = 20);
 
 private:
     MemoryPool(); // 私有建構函數
@@ -83,6 +91,10 @@ private:
     std::atomic<size_t> totalAllocated_;        // 已分配物件總數
     std::atomic<size_t> currentlyInUse_;        // 當前使用中的物件數
     bool initialized_ = false;                  // 初始化狀態
+    
+    // 執行緒本地緩存管理
+    mutable std::mutex thread_cache_mutex_;    // 保護執行緒本地緩存映射
+    std::unordered_map<std::thread::id, std::vector<bam1_t*>> thread_caches_; // 執行緒ID到其本地緩存的映射
 
     /**
      * @brief 建立一個新的bam1_t物件

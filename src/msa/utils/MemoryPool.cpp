@@ -2,6 +2,11 @@
 #include "msa/utils/LogManager.h"
 #include <sstream>
 
+// 使用預處理器檢查是否編譯時啟用了OpenMP
+#ifdef HAVE_OPENMP
+#include <omp.h>
+#endif
+
 namespace msa::utils {
 
 // 單例實例獲取
@@ -55,6 +60,34 @@ bam1_t* MemoryPool::createNewBam1() {
 
 // 獲取一個bam1_t物件
 bam1_t* MemoryPool::getBam1(bool waitIfEmpty) {
+    // 先嘗試從執行緒本地緩存獲取
+    auto& localCache = getThreadLocalCache();
+    if (!localCache.empty()) {
+        bam1_t* result = localCache.back();
+        localCache.pop_back();
+        
+        // 重置bam1_t物件的內容，確保沒有殘留數據
+        if (result->data) {
+            free(result->data);
+            result->data = NULL;
+        }
+        result->l_data = 0;
+        result->m_data = 0;
+        result->core.pos = -1;
+        result->core.mpos = -1;
+        result->core.mtid = -1;
+        result->core.tid = -1;
+        result->core.flag = 0;
+        result->core.n_cigar = 0;
+        result->core.l_qname = 0;
+        result->core.isize = 0;
+        result->core.bin = 0;
+        result->core.qual = 0;
+        
+        return result;
+    }
+    
+    // 如果本地緩存為空，則從全域池獲取
     bam1_t* result = nullptr;
     
     {
@@ -125,6 +158,14 @@ bam1_t* MemoryPool::getBam1(bool waitIfEmpty) {
 void MemoryPool::returnBam1(bam1_t* b) {
     if (!b) return;
     
+    // 先嘗試返回到執行緒本地緩存
+    auto& localCache = getThreadLocalCache();
+    if (localCache.size() < 50) {  // 本地緩存有上限
+        localCache.push_back(b);
+        return;
+    }
+    
+    // 如果本地緩存已滿，則返回到全域池
     {
         std::lock_guard<std::mutex> lock(mutex_);
         
@@ -141,8 +182,55 @@ void MemoryPool::returnBam1(bam1_t* b) {
     availableCondition_.notify_one();
 }
 
+// 獲取執行緒本地的bam1_t緩存
+std::vector<bam1_t*>& MemoryPool::getThreadLocalCache(size_t capacity) {
+    // 使用執行緒ID作為索引
+    std::thread::id threadId = std::this_thread::get_id();
+    
+    {
+        std::lock_guard<std::mutex> lock(thread_cache_mutex_);
+        
+        // 如果此執行緒尚未有緩存，則創建一個
+        if (thread_caches_.find(threadId) == thread_caches_.end()) {
+            thread_caches_[threadId] = std::vector<bam1_t*>();
+            thread_caches_[threadId].reserve(capacity);
+            
+            // 預填充部分bam1_t物件
+            for (size_t i = 0; i < capacity / 2; ++i) {
+                bam1_t* b = createNewBam1();
+                thread_caches_[threadId].push_back(b);
+                
+                // 更新全域計數
+                totalAllocated_++;
+                currentlyInUse_++;
+            }
+            
+#ifdef HAVE_OPENMP
+            LOG_DEBUG("MemoryPool", "為執行緒 " + std::to_string(omp_get_thread_num()) + " 創建本地緩存，預分配 " + std::to_string(capacity / 2) + " 個物件");
+#else
+            LOG_DEBUG("MemoryPool", "為執行緒創建本地緩存，預分配 " + std::to_string(capacity / 2) + " 個物件");
+#endif
+        }
+        
+        return thread_caches_[threadId];
+    }
+}
+
 // 釋放所有記憶體池中的物件
 void MemoryPool::releaseAll() {
+    // 先釋放所有執行緒本地緩存
+    {
+        std::lock_guard<std::mutex> lock(thread_cache_mutex_);
+        for (auto& [_, cache] : thread_caches_) {
+            for (auto* b : cache) {
+                bam_destroy1(b);
+            }
+            cache.clear();
+        }
+        thread_caches_.clear();
+    }
+    
+    // 再釋放全域緩存
     std::lock_guard<std::mutex> lock(mutex_);
     
     // 釋放所有可用物件
@@ -170,17 +258,42 @@ void MemoryPool::releaseAll() {
 // 獲取目前池中物件數量
 size_t MemoryPool::size() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return availableBam1ts_.size();
+    
+    size_t totalSize = availableBam1ts_.size();
+    
+    // 加上所有執行緒本地緩存中的物件數量
+    {
+        std::lock_guard<std::mutex> cacheLock(thread_cache_mutex_);
+        for (const auto& [_, cache] : thread_caches_) {
+            totalSize += cache.size();
+        }
+    }
+    
+    return totalSize;
 }
 
 // 獲取統計資訊
 std::string MemoryPool::getStats() const {
     std::lock_guard<std::mutex> lock(mutex_);
     
+    // 計算執行緒本地緩存的統計
+    size_t threadCacheCount = 0;
+    size_t threadCacheSize = 0;
+    
+    {
+        std::lock_guard<std::mutex> cacheLock(thread_cache_mutex_);
+        threadCacheCount = thread_caches_.size();
+        for (const auto& [_, cache] : thread_caches_) {
+            threadCacheSize += cache.size();
+        }
+    }
+    
     std::ostringstream ss;
     ss << "MemoryPool狀態: 總分配=" << totalAllocated_ 
        << ", 使用中=" << currentlyInUse_
-       << ", 可用=" << availableBam1ts_.size()
+       << ", 全域可用=" << availableBam1ts_.size()
+       << ", 執行緒緩存數=" << threadCacheCount
+       << ", 執行緒緩存物件總數=" << threadCacheSize
        << ", 最大容量=" << (maxCapacity_ == 0 ? "無限制" : std::to_string(maxCapacity_));
     
     return ss.str();

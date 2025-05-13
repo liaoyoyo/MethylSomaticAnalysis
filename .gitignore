@@ -9,7 +9,7 @@ Thumbs.db
 CMakeFiles/
 
 # 4. 建置輸出（Binary／Object／Library）
-build/
+build*/
 bin/
 *.o
 *.obj

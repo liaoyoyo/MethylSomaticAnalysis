@@ -281,7 +281,7 @@ BAM (Binary Alignment Map) 檔案需要包含比對讀段，並且為了進行�
   ```
   
   表示在 C（胞嘧啶）上偵測到 h (5-hmC) 修飾，第一個修飾位置的 likelihood 跳過 425 個相同鹼基後，再依序 2、2、2…
-* **ML\:B:C:**
+* **ML\:B:C**
   對應 MM 中每個修飾的 Phred-scaled likelihood 陣列 (0–255)，例如
 
   ``` bam tag

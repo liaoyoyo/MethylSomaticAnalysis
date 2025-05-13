@@ -44,6 +44,7 @@ bool BAMValidator::checkAllInputFiles(msa::Config& config) {
             // 非致命性警告，不要返回false
         }
         
+        bam_hdr_destroy(tumor_hdr);
         hts_close(tumor_fp);
     } else {
         LOG_WARN("BAMValidator", "腫瘤BAM指定為標準輸入，跳過標籤檢查");
@@ -76,6 +77,7 @@ bool BAMValidator::checkAllInputFiles(msa::Config& config) {
             // 非致命性警告，不要返回false
         }
         
+        bam_hdr_destroy(normal_hdr);
         hts_close(normal_fp);
     } else {
         LOG_WARN("BAMValidator", "正常BAM指定為標準輸入，跳過標籤檢查");
@@ -86,13 +88,23 @@ bool BAMValidator::checkAllInputFiles(msa::Config& config) {
 
 bool BAMValidator::checkMethylationTags(const std::string& bamPath, htsFile* fp, bam_hdr_t* hdr, msa::Config& config) {
        // 先重置文件指針
-       bgzf_seek(fp->fp.bgzf, 0, SEEK_SET);
+       if (bgzf_seek(fp->fp.bgzf, 0, SEEK_SET) < 0) {
+           LOG_ERROR("BAMValidator", "無法重新定位至BAM檔案開頭: " + bamPath);
+           return false;
+       }
+       
+       // 重新讀取標頭以確保標頭指針也被重置
+       bam_hdr_t* new_hdr = sam_hdr_read(fp);
+       if (!new_hdr) {
+           LOG_ERROR("BAMValidator", "無法重新讀取BAM標頭: " + bamPath);
+           return false;
+       }
        
        bam1_t* read = bam_init1();
        int found_mm = 0, found_ml = 0;
        int count = 0;
        
-       while (sam_read1(fp, hdr, read) >= 0 && count < 100) {
+       while (sam_read1(fp, new_hdr, read) >= 0 && count < 100) {
            count++;
            
            // 檢查標籤
@@ -104,6 +116,7 @@ bool BAMValidator::checkMethylationTags(const std::string& bamPath, htsFile* fp,
        }
        
        bam_destroy1(read);
+       bam_hdr_destroy(new_hdr);  // 釋放新的標頭
        
        LOG_INFO("BAMValidator", "BAM檔案 " + bamPath + " 檢查結果: MM標籤發現於 " + 
                 std::to_string(found_mm) + " 條讀段, ML標籤發現於 " + 
@@ -152,12 +165,21 @@ int BAMValidator::sampleCheckTag(const std::string& bamPath, htsFile* fp, bam_hd
         return 0;
     }
     
+    // 重新讀取標頭以確保標頭指針也被重置
+    bam_hdr_t* new_hdr = sam_hdr_read(fp);
+    if (!new_hdr) {
+        std::ostringstream ss;
+        ss << "無法重新讀取BAM標頭: " << bamPath;
+        LOG_ERROR("BAMValidator", ss.str());
+        return 0;
+    }
+    
     bam1_t* read = bam_init1();
     int count = 0;
     int found = 0;
     
     // 讀取指定數量的記錄並檢查標籤
-    while (sam_read1(fp, hdr, read) >= 0 && count < sampleSize) {
+    while (sam_read1(fp, new_hdr, read) >= 0 && count < sampleSize) {
         // 隨機取樣
         if (rand() % 3 != 0 && count > 10) continue;
         
@@ -171,6 +193,7 @@ int BAMValidator::sampleCheckTag(const std::string& bamPath, htsFile* fp, bam_hd
     }
     
     bam_destroy1(read);
+    bam_hdr_destroy(new_hdr);  // 釋放新的標頭
     
     return found;
 }

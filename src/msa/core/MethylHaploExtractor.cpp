@@ -323,19 +323,52 @@ std::string MethylHaploExtractor::extractHaplotypeTag(const bam1_t* read) {
     // 獲取HP標籤
     uint8_t* hp_data = bam_aux_get(read, "HP");
     if (hp_data) {
-        int hp_value = bam_aux2i(hp_data);
-        
-        // 檢查PS標籤是否存在（部分數據集可能沒有PS標籤）
-        uint8_t* ps_data = bam_aux_get(read, "PS");
-        
-        // 有效的單倍型值為1或2
-        if (hp_value == 1 || hp_value == 2) {
-            return std::to_string(hp_value);
-        } else if (hp_value == 1-1 || hp_value == 2-1){
-            // 非標準單倍型值
-            return std::to_string(hp_value);
-        }else if (hp_value == 3){
-            // 
+        // 檢查是否為字符串類型
+        char type = bam_aux_type(hp_data);
+        if (type == 'Z') {
+            // 字符串標籤表示
+            const char* hp_str = bam_aux2Z(hp_data);
+            if (strcmp(hp_str, "un") == 0 || strcmp(hp_str, "UN") == 0) {
+                return "un";
+            } else if (strcmp(hp_str, "1-1") == 0) {
+                return "1-1";
+            } else if (strcmp(hp_str, "2-1") == 0) {
+                return "2-1";
+            }
+            return hp_str;
+        } else {
+            // 數值標籤表示
+            int hp_value = bam_aux2i(hp_data);
+            
+            // 檢查PS標籤是否存在（部分數據集可能沒有PS標籤）
+            uint8_t* ps_data = bam_aux_get(read, "PS");
+            
+            // 處理各種單倍型標記情況
+            if (hp_value == 1 || hp_value == 2) {
+                // 標準單倍型值：1或2
+                return std::to_string(hp_value);
+            } else if (hp_value == 0) {
+                // 檢查是否為1-1或2-1特殊編碼情況
+                // 有些工具將1-1編碼為0，將2-1編碼為1
+                uint8_t* origHP_data = bam_aux_get(read, "origHP");
+                if (origHP_data) {
+                    const char* origHP_str = bam_aux2Z(origHP_data);
+                    if (strcmp(origHP_str, "1-1") == 0) {
+                        return "1-1";
+                    } else if (strcmp(origHP_str, "2-1") == 0) {
+                        return "2-1";
+                    }
+                }
+                return "0";
+            } else if (hp_value == 3) {
+                // HP=3表示讀段跨越多個相位區塊或無法確定單一單倍型
+                return "3";
+            } else if (hp_value == -1) {
+                // 某些情況下，-1可能表示未分配的單倍型
+                return "un";
+            }
+            
+            // 其他未知HP值，直接返回其值的字符串表示
             return std::to_string(hp_value);
         }
     }

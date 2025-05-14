@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
     std::cout << "---------------------------------------" << std::endl;
     
     // 初始化日誌管理器
-    msa::utils::LogManager::getInstance().initialize(msa::utils::LogLevel::TRACE, "msa.log");
+    msa::utils::LogManager::getInstance().initialize(msa::utils::LogLevel::INFO, "msa.log");
     LOG_INFO("Main", "初始化MethylSomaticAnalysis...");
     
     // 解析命令列參數
@@ -187,6 +187,13 @@ int main(int argc, char** argv) {
         std::cout << config_parser.getUsage() << std::endl;
         return 1;
     }
+    
+    // 使用設定的日誌級別重新初始化日誌管理器
+    msa::utils::LogManager::getInstance().shutdown();
+    msa::utils::LogManager::getInstance().initialize(
+        msa::utils::LogManager::stringToLogLevel(config.log_level), 
+        "msa.log");
+    LOG_INFO("Main", "日誌系統以級別 " + config.log_level + " 初始化");
     
     // 檢查必要參數
     if (config.vcf_files.empty()) {

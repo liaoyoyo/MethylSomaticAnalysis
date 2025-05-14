@@ -89,13 +89,15 @@ bool ReportExporter::exportGlobalSummary(const msa::GlobalSummaryMetrics& metric
 }
 
 bool ReportExporter::exportLevel1Details(const std::vector<msa::MethylationSiteDetail>& details, const std::string& outputDir) {
-    std::string tempPath = outputDir + "/level1_raw_methylation_details.tsv";
-    std::ofstream outFile(tempPath);
+    std::string outputPath = outputDir + "/level1_raw_methylation_details.tsv";
+    std::ofstream outFile(outputPath);
     
     if (!outFile.is_open()) {
-        LOG_ERROR("ReportExporter", "無法開啟輸出檔案: " + tempPath);
+        LOG_ERROR("ReportExporter", "無法開啟輸出檔案: " + outputPath);
         return false;
     }
+    
+    LOG_INFO("ReportExporter", "開始匯出Level 1詳情，gzip壓縮: " + std::string(config_.gzip_output ? "是" : "否"));
     
     // 寫入標題列
     outFile << "chrom\tmethyl_pos\tsomatic_pos\tvariant_type\tvcf_source_id\tbam_source_id\t"
@@ -123,30 +125,34 @@ bool ReportExporter::exportLevel1Details(const std::vector<msa::MethylationSiteD
     
     // 如果需要gzip壓縮
     if (config_.gzip_output) {
-        std::string gzipPath = tempPath + ".gz";
-        if (compressFile(tempPath, gzipPath)) {
+        LOG_INFO("ReportExporter", "正在將Level 1詳情壓縮為gzip格式");
+        std::string gzipPath = outputPath + ".gz";
+        if (compressFile(outputPath, gzipPath)) {
             // 壓縮成功後刪除原檔案
-            fs::remove(tempPath);
+            fs::remove(outputPath);
             LOG_INFO("ReportExporter", "已匯出Level 1原始甲基化詳情 (已壓縮): " + gzipPath);
         } else {
             LOG_ERROR("ReportExporter", "壓縮Level 1檔案失敗");
             return false;
         }
     } else {
-        LOG_INFO("ReportExporter", "已匯出Level 1原始甲基化詳情: " + tempPath);
+        LOG_INFO("ReportExporter", "按照設定不壓縮Level 1詳情文件");
+        LOG_INFO("ReportExporter", "已匯出Level 1原始甲基化詳情: " + outputPath);
     }
     
     return true;
 }
 
 bool ReportExporter::exportLevel2Summary(const std::vector<msa::SomaticVariantMethylationSummary>& summaries, const std::string& outputDir) {
-    std::string tempPath = outputDir + "/level2_somatic_variant_methylation_summary.tsv";
-    std::ofstream outFile(tempPath);
+    std::string outputPath = outputDir + "/level2_somatic_variant_methylation_summary.tsv";
+    std::ofstream outFile(outputPath);
     
     if (!outFile.is_open()) {
-        LOG_ERROR("ReportExporter", "無法開啟輸出檔案: " + tempPath);
+        LOG_ERROR("ReportExporter", "無法開啟輸出檔案: " + outputPath);
         return false;
     }
+    
+    LOG_INFO("ReportExporter", "開始匯出Level 2摘要，gzip壓縮: " + std::string(config_.gzip_output ? "是" : "否"));
     
     // 寫入標題列
     outFile << "chrom\tsomatic_pos\tvariant_type\tvcf_source_id\tbam_source_id\t"
@@ -172,17 +178,19 @@ bool ReportExporter::exportLevel2Summary(const std::vector<msa::SomaticVariantMe
     
     // 如果需要gzip壓縮
     if (config_.gzip_output) {
-        std::string gzipPath = tempPath + ".gz";
-        if (compressFile(tempPath, gzipPath)) {
+        LOG_INFO("ReportExporter", "正在將Level 2摘要壓縮為gzip格式");
+        std::string gzipPath = outputPath + ".gz";
+        if (compressFile(outputPath, gzipPath)) {
             // 壓縮成功後刪除原檔案
-            fs::remove(tempPath);
+            fs::remove(outputPath);
             LOG_INFO("ReportExporter", "已匯出Level 2變異甲基化摘要 (已壓縮): " + gzipPath);
         } else {
             LOG_ERROR("ReportExporter", "壓縮Level 2檔案失敗");
             return false;
         }
     } else {
-        LOG_INFO("ReportExporter", "已匯出Level 2變異甲基化摘要: " + tempPath);
+        LOG_INFO("ReportExporter", "按照設定不壓縮Level 2摘要文件");
+        LOG_INFO("ReportExporter", "已匯出Level 2變異甲基化摘要: " + outputPath);
     }
     
     return true;

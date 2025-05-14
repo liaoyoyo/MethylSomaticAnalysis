@@ -569,6 +569,7 @@ AGCTAGCATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGA
         12. `strand`（+/-，指甲基化位點本身或讀段的鏈方向）
         13. `read_id`：讀段 QNAME
       * **排序邏輯**：依序比較每欄位值，確保相同染色體區域集中；haplotype 以預設順序插入。
+      * **說明**：輸出每一條有通過 Somatic 位點的read的甲基位點資訊，條列甲基位點的每個數值。
 
 3. **Level 2：每個 Somatic 位點周邊甲基統計**
 

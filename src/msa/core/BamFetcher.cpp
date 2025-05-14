@@ -125,6 +125,9 @@ bool BamFetcher::fetchReadsAroundVariant(
     int start = std::max(0, pos_0based - config_.window_size);
     int end = pos_0based + config_.window_size;
     
+    LOG_DEBUG("BamFetcher", "使用窗口大小: " + std::to_string(config_.window_size) + 
+             ", 區域: " + variant.chrom + ":" + std::to_string(start+1) + "-" + std::to_string(end+1));
+    
     // 獲取腫瘤樣本的讀段
     if (tumor_fp_ && tumor_hdr_ && tumor_idx_) {
         if (!fetchReadsFromRegion(tumor_fp_, tumor_hdr_, tumor_idx_, 

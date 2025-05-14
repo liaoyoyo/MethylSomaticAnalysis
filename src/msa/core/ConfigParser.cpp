@@ -40,7 +40,7 @@ msa::Config ConfigParser::parse(int argc, char** argv) {
         ("log-level", "日誌級別 (trace/debug/info/warn/error/fatal)", cxxopts::value<std::string>()->default_value("info"))
         ("j,threads", "執行緒數", cxxopts::value<int>()->default_value("0"))
         ("o,outdir", "輸出總路徑", cxxopts::value<std::string>()->default_value("./results"))
-        ("gzip-output", "是否gzip壓縮Level 1 & 2 TSV輸出", cxxopts::value<bool>()->default_value("true"))
+        ("gzip-output", "是否gzip壓縮Level 1 & 2 TSV輸出", cxxopts::value<std::string>()->default_value("true"))
         ("max-read-depth", "最大讀取深度", cxxopts::value<int>()->default_value("10000"))
         ("max-ram-gb", "最大RAM使用量(GB)", cxxopts::value<int>()->default_value("32"))
         ("h,help", "顯示使用說明");
@@ -129,7 +129,13 @@ msa::Config ConfigParser::parse(int argc, char** argv) {
         }
         
         if (result.count("gzip-output")) {
-            config.gzip_output = result["gzip-output"].as<bool>();
+            std::string gzip_value = result["gzip-output"].as<std::string>();
+            // 轉換為小寫以便比較
+            std::transform(gzip_value.begin(), gzip_value.end(), gzip_value.begin(),
+                          [](unsigned char c){ return std::tolower(c); });
+            // 判斷字串是否表示false
+            config.gzip_output = !(gzip_value == "false" || gzip_value == "0" || gzip_value == "no" || gzip_value == "n" || gzip_value == "off");
+            LOG_INFO("ConfigParser", "設定輸出壓縮: " + std::string(config.gzip_output ? "是" : "否") + " (原始值: " + gzip_value + ")");
         }
         
         if (result.count("max-read-depth")) {

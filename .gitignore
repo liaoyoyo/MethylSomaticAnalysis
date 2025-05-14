@@ -23,7 +23,7 @@ bin/
 
 # 6. 其他資料夾（視專案需求）
 # 若不想把「results/」結果檔也放到 Git，就啟用下面這行
-results/
+results*/
 
 # 7. 輸出目錄
 *output*/

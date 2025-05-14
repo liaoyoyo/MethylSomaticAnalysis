@@ -176,6 +176,9 @@ void MethylHaploExtractor::extractMethylation(
         int read_pos = 0;
         int current_c_count = 0;
         
+        // 變異位置 (0-based)
+        int variant_pos_0based = target_variant.pos - 1;
+        
         // 遍歷CIGAR操作，找到所有C鹼基位置
         for (int i = 0; i < n_cigar; ++i) {
             uint32_t cigar_op = cigar[i];
@@ -196,6 +199,11 @@ void MethylHaploExtractor::extractMethylation(
                         if (current_c_count == initial_offset) {
                             // 找到了第一個甲基化位置
                             int methyl_ref_pos = ref_pos + j;
+                            
+                            // 檢查甲基化位置是否在變異位置的window_size範圍內
+                            if (std::abs(methyl_ref_pos - variant_pos_0based) > config_.window_size) {
+                                break;
+                            }
                             
                             // 獲取ML值 (0-255的甲基化可能性)
                             float meth_prob = 0.0;
@@ -262,6 +270,11 @@ void MethylHaploExtractor::extractMethylation(
                                 }
                                 
                                 if (next_methyl_ref_pos != -1) {
+                                    // 檢查甲基化位置是否在變異位置的window_size範圍內
+                                    if (std::abs(next_methyl_ref_pos - variant_pos_0based) > config_.window_size) {
+                                        continue;
+                                    }
+                                    
                                     // 獲取ML值
                                     meth_prob = 0.0;
                                     if (ml_array && ml_len > ml_index) {

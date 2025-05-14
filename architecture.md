@@ -307,7 +307,7 @@ BAM (Binary Alignment Map) 檔案需要包含比對讀段，並且為了進行�
   * `cm:i`, `s1:i`, `s2:i`…：校正與比對分數
   * `st:Z:`：處理時間戳記 (ISO 8601)
   * `fn:Z:`：原始檔名
-  * `sv:Z:`：信號檔格式 (e.g. “pa”)
+  * `sv:Z:`：信號檔格式 (e.g. "pa")
   * `rl:i:`：讀段長度 (read length)
 
 ### 範例擷取結果

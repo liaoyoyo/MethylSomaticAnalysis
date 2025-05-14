@@ -49,6 +49,8 @@ private:
         const std::string& bam_source_id,
         const std::string& haplotype_tag,
         const std::string& somatic_allele_type,
+        const std::string& somatic_base_at_variant,
+        const std::string& read_id,
         std::vector<msa::MethylationSiteDetail>& details
     );
     

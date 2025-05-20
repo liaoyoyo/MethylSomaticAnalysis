@@ -18,10 +18,19 @@ using namespace msa::utils;
 
 namespace msa::core {
 
+/*
+* 構造函數
+* \param config 配置
+*/
 SomaticMethylationAnalyzer::SomaticMethylationAnalyzer(const msa::Config& config)
     : config_(config) {
 }
 
+/*
+* 分析甲基化位點
+* \param sites 甲基化位點
+* \return 分析結果
+*/
 msa::AnalysisResults SomaticMethylationAnalyzer::analyze(const std::vector<msa::MethylationSiteDetail>& sites) {
     LOG_INFO("SomaticMethylationAnalyzer", "開始分析 " + std::to_string(sites.size()) + " 個甲基化位點");
     
@@ -48,6 +57,11 @@ msa::AnalysisResults SomaticMethylationAnalyzer::analyze(const std::vector<msa::
     return results;
 }
 
+/*
+* 過濾雙股覆蓋不足的位點
+* \param sites 甲基化位點
+* \return 過濾後的位點
+*/
 std::vector<msa::MethylationSiteDetail> SomaticMethylationAnalyzer::filterSitesByStrandCoverage(
     const std::vector<msa::MethylationSiteDetail>& sites) {
     
@@ -121,6 +135,11 @@ std::vector<msa::MethylationSiteDetail> SomaticMethylationAnalyzer::filterSitesB
     return filtered_sites;
 }
 
+/*
+* 生成Level 2摘要
+* \param sites 甲基化位點
+* \return 摘要
+*/
 std::vector<msa::SomaticVariantMethylationSummary> SomaticMethylationAnalyzer::generateLevel2Summary(
     const std::vector<msa::MethylationSiteDetail>& sites) {
     
@@ -235,6 +254,11 @@ std::vector<msa::SomaticVariantMethylationSummary> SomaticMethylationAnalyzer::g
     return summaries;
 }
 
+/*
+* 生成Level 3聚合統計
+* \param level2Summary Level 2摘要
+* \return 聚合統計
+*/
 std::vector<msa::AggregatedHaplotypeStats> SomaticMethylationAnalyzer::generateLevel3Statistics(
     const std::vector<msa::SomaticVariantMethylationSummary>& level2Summary) {
     
@@ -336,6 +360,12 @@ std::vector<msa::AggregatedHaplotypeStats> SomaticMethylationAnalyzer::generateL
     return stats;
 }
 
+/*
+* 計算全域摘要指標
+* \param sites 甲基化位點
+* \param level2Summary Level 2摘要
+* \return 全域摘要指標
+*/
 msa::GlobalSummaryMetrics SomaticMethylationAnalyzer::calculateGlobalMetrics(
     const std::vector<msa::MethylationSiteDetail>& sites,
     const std::vector<msa::SomaticVariantMethylationSummary>& level2Summary) {
@@ -410,6 +440,12 @@ msa::GlobalSummaryMetrics SomaticMethylationAnalyzer::calculateGlobalMetrics(
     return metrics;
 }
 
+/*
+* 計算p值
+* \param group1 組1
+* \param group2 組2
+* \return p值
+*/
 float SomaticMethylationAnalyzer::calculatePValue(const std::vector<float>& group1, const std::vector<float>& group2) {
     // 簡單t檢驗實現
     // 注意：這是一個非常簡化的t檢驗實現，實際應用中應使用統計庫

@@ -16,6 +16,12 @@ namespace msa::core {
 
 ConfigParser::ConfigParser() = default;
 
+/*
+* 解析命令列參數
+* \param argc 命令列參數數量
+* \param argv 命令列參數陣列
+* \return 配置
+*/
 msa::Config ConfigParser::parse(int argc, char** argv) {
     msa::Config config;
     
@@ -38,6 +44,7 @@ msa::Config ConfigParser::parse(int argc, char** argv) {
         ("min-allele", "每個變異至少需有此數量Tumor BAM支持ALT讀數", cxxopts::value<int>()->default_value("0"))
         ("min-strand-reads", "每個CpG位點在正反鏈上各自至少需要的支持讀數", cxxopts::value<int>()->default_value("1"))
         ("log-level", "日誌級別 (trace/debug/info/warn/error/fatal)", cxxopts::value<std::string>()->default_value("info"))
+        ("log-file", "日誌檔案名稱", cxxopts::value<std::string>()->default_value("msa.log"))
         ("j,threads", "執行緒數", cxxopts::value<int>()->default_value("0"))
         ("o,outdir", "輸出總路徑", cxxopts::value<std::string>()->default_value("./results"))
         ("gzip-output", "是否gzip壓縮Level 1 & 2 TSV輸出", cxxopts::value<std::string>()->default_value("true"))
@@ -112,6 +119,10 @@ msa::Config ConfigParser::parse(int argc, char** argv) {
             config.log_level = result["log-level"].as<std::string>();
         }
         
+        if (result.count("log-file")) {
+            config.log_file = result["log-file"].as<std::string>();
+        }
+        
         if (result.count("threads")) {
             config.threads = result["threads"].as<int>();
             if (config.threads <= 0) {
@@ -175,6 +186,10 @@ msa::Config ConfigParser::parse(int argc, char** argv) {
     return config;
 }
 
+/*
+* 驗證配置是否合法
+* \param config 配置
+*/
 void ConfigParser::validateConfig(msa::Config& config) {
     // 檢查變異點擷取區域半徑
     if (config.window_size <= 0 || config.window_size > 100000) {
@@ -220,6 +235,12 @@ void ConfigParser::validateConfig(msa::Config& config) {
     }
 }
 
+/*
+* 檢查檔案是否存在
+* \param filePath 檔案路徑
+* \param fileType 檔案類型
+* \param required 是否必須存在
+*/
 void ConfigParser::checkFileExists(const std::string& filePath, const std::string& fileType, bool required) {
     // 處理標準輸入/輸出的特殊情況
     if (filePath == "-") {
@@ -243,6 +264,10 @@ void ConfigParser::checkFileExists(const std::string& filePath, const std::strin
     }
 }
 
+/*
+* 檢查VCF檔案
+* \param vcfPaths VCF檔案路徑
+*/
 void ConfigParser::checkVcfFiles(const std::vector<std::string>& vcfPaths) {
     for (const auto& vcfPath : vcfPaths) {
         // 檢查VCF檔案
@@ -254,6 +279,12 @@ void ConfigParser::checkVcfFiles(const std::vector<std::string>& vcfPaths) {
     }
 }
 
+/*
+* 檢查BAM檔案
+* \param bamPath BAM檔案路徑
+* \param bamType BAM檔案類型
+* \param isRequired 是否必須存在
+*/
 void ConfigParser::checkBamFile(const std::string& bamPath, const std::string& bamType, bool isRequired) {
     // 檢查BAM檔案
     checkFileExists(bamPath, bamType, isRequired);
@@ -283,6 +314,10 @@ void ConfigParser::checkBamFile(const std::string& bamPath, const std::string& b
     }
 }
 
+/*
+* 檢查參考基因組檔案
+* \param refPath 參考基因組檔案路徑
+*/
 void ConfigParser::checkRefFile(const std::string& refPath) {
     // 檢查參考基因組檔案
     checkFileExists(refPath, "參考基因組檔案");
@@ -292,12 +327,21 @@ void ConfigParser::checkRefFile(const std::string& refPath) {
     checkFileExists(faiPath, "參考基因組索引檔案(fai)");
 }
 
+/*
+* 獲取使用說明
+* \return 使用說明
+*/
 std::string ConfigParser::getUsage() const {
     return "用法: MethylSomaticAnalysis --vcfs <vcf_file1> [<vcf_file2> ...] --ref <ref_file> "
            "--tumor <tumor_bam> --normal <normal_bam> [選項]\n"
            "使用 --help 參數查看完整說明";
 }
 
+/*
+* 獲取檔案名稱（移除路徑）
+* \param filepath 檔案路徑
+* \return 檔案名稱
+*/
 std::string ConfigParser::getBasename(const std::string& filepath) {
     // 獲取檔案名稱（移除路徑）
     fs::path path(filepath);

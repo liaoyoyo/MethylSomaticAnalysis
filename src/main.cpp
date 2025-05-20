@@ -62,7 +62,12 @@ void initializeOpenMP(const msa::Config& config) {
 }
 
 /**
- * @brief 並行處理單個變異
+ * @brief 並行處理單個變異，提取甲基化位點，並返回甲基化位點列表
+ * \param variant 變異資訊
+ * \param bam_fetcher BAM檔案讀取器
+ * \param meth_extractor 甲基化/單倍型提取器
+ * \param config 配置
+ * \return 甲基化位點列表
  */
 std::vector<msa::MethylationSiteDetail> processVariant(
     const msa::VcfVariantInfo& variant,
@@ -72,13 +77,13 @@ std::vector<msa::MethylationSiteDetail> processVariant(
     
     std::vector<msa::MethylationSiteDetail> variant_sites;
     
-    LOG_INFO("Main", "處理變異: " + variant.chrom + ":" + std::to_string(variant.pos) + " " + variant.variant_type);
+    LOG_DEBUG("Main", "處理變異: " + variant.chrom + ":" + std::to_string(variant.pos) + " " + variant.variant_type);
     
     // 提取腫瘤樣本中的甲基化位點
     if (!config.tumor_bam.empty() && config.tumor_has_methyl_tags) {
         std::vector<std::unique_ptr<bam1_t, std::function<void(bam1_t*)>>> tumor_reads = 
             bam_fetcher.fetchReadsAroundVariant(variant, true, config.window_size);
-        LOG_INFO("Main", "腫瘤樣本有 " + std::to_string(tumor_reads.size()) + " 個讀段覆蓋此變異");
+        LOG_DEBUG("Main", "腫瘤樣本有 " + std::to_string(tumor_reads.size()) + " 個讀段覆蓋此變異");
         
         for (const auto& read : tumor_reads) {
             auto methyl_sites = meth_extractor.extractFromRead(read.get(), variant, "tumor");
@@ -90,7 +95,7 @@ std::vector<msa::MethylationSiteDetail> processVariant(
     if (!config.normal_bam.empty() && config.normal_has_methyl_tags) {
         std::vector<std::unique_ptr<bam1_t, std::function<void(bam1_t*)>>> normal_reads = 
             bam_fetcher.fetchReadsAroundVariant(variant, false, config.window_size);
-        LOG_INFO("Main", "對照樣本有 " + std::to_string(normal_reads.size()) + " 個讀段覆蓋此變異");
+        LOG_DEBUG("Main", "對照樣本有 " + std::to_string(normal_reads.size()) + " 個讀段覆蓋此變異");
         
         for (const auto& read : normal_reads) {
             auto methyl_sites = meth_extractor.extractFromRead(read.get(), variant, "normal");
@@ -164,17 +169,17 @@ std::vector<msa::MethylationSiteDetail> processVariantsInParallel(
 
 /**
  * @brief 主程式入口點
+ * \param argc 命令列參數數量
+ * \param argv 命令列參數數組
+ * \return 執行狀態碼
  */
 int main(int argc, char** argv) {
+    // 記錄程式開始執行時間
     auto start_time = std::chrono::high_resolution_clock::now();
     
     // 顯示歡迎信息
     showVersion();
     std::cout << "---------------------------------------" << std::endl;
-    
-    // 初始化日誌管理器
-    msa::utils::LogManager::getInstance().initialize(msa::utils::LogLevel::INFO, "msa.log");
-    LOG_INFO("Main", "初始化MethylSomaticAnalysis...");
     
     // 解析命令列參數
     ConfigParser config_parser;
@@ -183,16 +188,20 @@ int main(int argc, char** argv) {
     try {
         config = config_parser.parse(argc, argv);
     } catch (const std::exception& e) {
-        LOG_ERROR("Main", "解析參數錯誤: " + std::string(e.what()));
+        std::cout << "解析參數錯誤: " << e.what() << std::endl;
         std::cout << config_parser.getUsage() << std::endl;
         return 1;
     }
+    
+    // 初始化日誌管理器
+    msa::utils::LogManager::getInstance().initialize(msa::utils::LogLevel::INFO_Level, config.log_file);
+    LOG_INFO("Main", "初始化MethylSomaticAnalysis...");
     
     // 使用設定的日誌級別重新初始化日誌管理器
     msa::utils::LogManager::getInstance().shutdown();
     msa::utils::LogManager::getInstance().initialize(
         msa::utils::LogManager::stringToLogLevel(config.log_level), 
-        "msa.log");
+        config.log_file);
     LOG_INFO("Main", "日誌系統以級別 " + config.log_level + " 初始化");
     
     // 檢查必要參數

@@ -2,29 +2,43 @@
 #include "msa/utils/LogManager.h"
 #include <sstream>
 
-// 使用預處理器檢查是否編譯時啟用了OpenMP
+/**
+ * @brief 使用預處理器檢查是否編譯時啟用了OpenMP
+ * \return 如果編譯時啟用了OpenMP則返回true，否則返回false
+ */
 #ifdef HAVE_OPENMP
 #include <omp.h>
 #endif
 
 namespace msa::utils {
 
-// 單例實例獲取
+/**
+ * @brief 單例實例獲取
+ * \return 記憶體池實例
+ */
 MemoryPool& MemoryPool::getInstance() {
     static MemoryPool instance;
     return instance;
 }
 
-// 建構函數
+/**
+ * @brief 建構函數
+ */
 MemoryPool::MemoryPool() : maxCapacity_(0), totalAllocated_(0), currentlyInUse_(0), initialized_(false) {
 }
 
-// 解構函數
+/**
+ * @brief 解構函數
+ */
 MemoryPool::~MemoryPool() {
     releaseAll();
 }
 
-// 初始化記憶體池
+/**
+ * @brief 初始化記憶體池
+ * \param initialCapacity 初始容量
+ * \param maxCapacity 最大容量
+ */
 void MemoryPool::initialize(size_t initialCapacity, size_t maxCapacity) {
     std::lock_guard<std::mutex> lock(mutex_);
     
@@ -49,7 +63,10 @@ void MemoryPool::initialize(size_t initialCapacity, size_t maxCapacity) {
     LOG_INFO("MemoryPool", ss.str());
 }
 
-// 建立新的bam1_t物件
+/**
+ * @brief 建立新的bam1_t物件
+ * \return 新的bam1_t物件
+ */
 bam1_t* MemoryPool::createNewBam1() {
     bam1_t* b = bam_init1();
     if (!b) {
@@ -58,7 +75,11 @@ bam1_t* MemoryPool::createNewBam1() {
     return b;
 }
 
-// 獲取一個bam1_t物件
+/**
+ * @brief 獲取一個bam1_t物件
+ * \param waitIfEmpty 如果池中沒有可用物件，是否等待
+ * \return 獲取的bam1_t物件
+ */
 bam1_t* MemoryPool::getBam1(bool waitIfEmpty) {
     // 先嘗試從執行緒本地緩存獲取
     auto& localCache = getThreadLocalCache();
@@ -154,7 +175,10 @@ bam1_t* MemoryPool::getBam1(bool waitIfEmpty) {
     return result;
 }
 
-// 返回一個bam1_t物件到池中
+/**
+ * @brief 返回一個bam1_t物件到池中
+ * \param b 返回的bam1_t物件
+ */
 void MemoryPool::returnBam1(bam1_t* b) {
     if (!b) return;
     
@@ -182,7 +206,11 @@ void MemoryPool::returnBam1(bam1_t* b) {
     availableCondition_.notify_one();
 }
 
-// 獲取執行緒本地的bam1_t緩存
+/**
+ * @brief 獲取執行緒本地的bam1_t緩存
+ * \param capacity 緩存容量
+ * \return 執行緒本地的bam1_t緩存
+ */
 std::vector<bam1_t*>& MemoryPool::getThreadLocalCache(size_t capacity) {
     // 使用執行緒ID作為索引
     std::thread::id threadId = std::this_thread::get_id();
@@ -216,7 +244,9 @@ std::vector<bam1_t*>& MemoryPool::getThreadLocalCache(size_t capacity) {
     }
 }
 
-// 釋放所有記憶體池中的物件
+/**
+ * @brief 釋放所有記憶體池中的物件
+ */
 void MemoryPool::releaseAll() {
     // 先釋放所有執行緒本地緩存
     {
@@ -255,7 +285,10 @@ void MemoryPool::releaseAll() {
     LOG_INFO("MemoryPool", "記憶體池已釋放所有物件");
 }
 
-// 獲取目前池中物件數量
+/**
+ * @brief 獲取目前池中物件數量
+ * \return 池中物件數量
+ */
 size_t MemoryPool::size() const {
     std::lock_guard<std::mutex> lock(mutex_);
     
@@ -272,7 +305,10 @@ size_t MemoryPool::size() const {
     return totalSize;
 }
 
-// 獲取統計資訊
+/**
+ * @brief 獲取統計資訊
+ * \return 統計資訊字串
+ */
 std::string MemoryPool::getStats() const {
     std::lock_guard<std::mutex> lock(mutex_);
     

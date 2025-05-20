@@ -17,6 +17,12 @@ ReportExporter::ReportExporter(const msa::Config& config)
     : config_(config) {
 }
 
+/*
+* 匯出分析結果
+* \param results 分析結果
+* \param vcf_source_id VCF來源ID
+* \return 是否成功匯出
+*/
 bool ReportExporter::exportResults(const msa::AnalysisResults& results, const std::string& vcf_source_id) {
     // 建立輸出目錄 (basedir/vcf_source_id)
     std::string outputDir = config_.outdir + "/" + vcf_source_id;
@@ -196,6 +202,12 @@ bool ReportExporter::exportLevel2Summary(const std::vector<msa::SomaticVariantMe
     return true;
 }
 
+/*
+* 匯出Level 3單倍型統計
+* \param stats 單倍型統計數據
+* \param outputDir 輸出目錄
+* \return 是否成功匯出
+*/  
 bool ReportExporter::exportLevel3Stats(const std::vector<msa::AggregatedHaplotypeStats>& stats, const std::string& outputDir) {
     std::string outputPath = outputDir + "/level3_haplotype_group_statistics.tsv";
     std::ofstream outFile(outputPath);
@@ -252,6 +264,11 @@ bool ReportExporter::exportLevel3Stats(const std::vector<msa::AggregatedHaplotyp
     return true;
 }
 
+/*
+* 創建目錄
+* \param dirPath 目錄路徑
+* \return 是否成功創建
+*/
 bool ReportExporter::createDirectory(const std::string& dirPath) {
     try {
         fs::path path(dirPath);
@@ -265,6 +282,12 @@ bool ReportExporter::createDirectory(const std::string& dirPath) {
     }
 }
 
+/*
+* 壓縮檔案
+* \param inputPath 輸入檔案路徑
+* \param outputPath 輸出檔案路徑
+* \return 是否成功壓縮
+*/
 bool ReportExporter::compressFile(const std::string& inputPath, const std::string& outputPath) {
     // 使用zlib進行gzip壓縮
     gzFile gzf = gzopen(outputPath.c_str(), "wb");

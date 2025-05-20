@@ -13,12 +13,12 @@ namespace msa::utils {
  * @brief 日誌等級定義
  */
 enum class LogLevel {
-    TRACE,  // 最詳細追蹤
-    DEBUG,  // 除錯資訊
-    INFO,   // 一般資訊
-    WARN,   // 警告
-    ERROR,  // 錯誤
-    FATAL   // 致命錯誤
+    TRACE_Level,  // 最詳細追蹤
+    DEBUG_Level,  // 除錯資訊
+    INFO_Level,   // 一般資訊
+    WARN_Level,   // 警告
+    ERROR_Level,  // 錯誤
+    FATAL_Level   // 致命錯誤
 };
 
 /**
@@ -88,11 +88,11 @@ private:
 };
 
 // 便利巨集，用於簡化日誌呼叫
-#define LOG_TRACE(module, message) msa::utils::LogManager::getInstance().log(msa::utils::LogLevel::TRACE, module, message)
-#define LOG_DEBUG(module, message) msa::utils::LogManager::getInstance().log(msa::utils::LogLevel::DEBUG, module, message)
-#define LOG_INFO(module, message)  msa::utils::LogManager::getInstance().log(msa::utils::LogLevel::INFO, module, message)
-#define LOG_WARN(module, message)  msa::utils::LogManager::getInstance().log(msa::utils::LogLevel::WARN, module, message)
-#define LOG_ERROR(module, message) msa::utils::LogManager::getInstance().log(msa::utils::LogLevel::ERROR, module, message)
-#define LOG_FATAL(module, message) msa::utils::LogManager::getInstance().log(msa::utils::LogLevel::FATAL, module, message)
+#define LOG_TRACE(module, message) msa::utils::LogManager::getInstance().log(msa::utils::LogLevel::TRACE_Level, module, message)
+#define LOG_DEBUG(module, message) msa::utils::LogManager::getInstance().log(msa::utils::LogLevel::DEBUG_Level, module, message)
+#define LOG_INFO(module, message)  msa::utils::LogManager::getInstance().log(msa::utils::LogLevel::INFO_Level, module, message)
+#define LOG_WARN(module, message)  msa::utils::LogManager::getInstance().log(msa::utils::LogLevel::WARN_Level, module, message)
+#define LOG_ERROR(module, message) msa::utils::LogManager::getInstance().log(msa::utils::LogLevel::ERROR_Level, module, message)
+#define LOG_FATAL(module, message) msa::utils::LogManager::getInstance().log(msa::utils::LogLevel::FATAL_Level, module, message)
 
 } // namespace msa::utils 

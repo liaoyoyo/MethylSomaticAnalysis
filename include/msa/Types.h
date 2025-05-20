@@ -20,16 +20,17 @@ struct Config {
     std::string bed_file;                // BED檔案（限制分析區域）
     std::string outdir;                  // 輸出目錄
     
-    int window_size = 500;                // 甲基化窗口大小 (bp)
-    float meth_high_threshold = 0.7f;     // 高甲基化閾值
-    float meth_low_threshold = 0.3f;      // 低甲基化閾值
-    float min_allele = 0.2f;              // 最小等位基因頻率
+    int window_size = 100;                // 甲基化窗口大小 (bp)
+    float meth_high_threshold = 0.8f;     // 高甲基化閾值
+    float meth_low_threshold = 0.2f;      // 低甲基化閾值
+    float min_allele = 0.1f;              // 最小等位基因頻率
     int min_strand_reads = 3;             // 每條鏈上要求的最小讀段數
-    int threads = 1;                      // 執行緒數
+    int threads = 8;                      // 執行緒數
     bool gzip_output = true;              // 是否壓縮輸出
     int max_read_depth = 10000;           // 最大讀取深度
     int max_ram_gb = 32;                  // 最大RAM使用量(GB)
-    std::string log_level = "TRACE";       // 日誌級別
+    std::string log_level = "INFO";       // 日誌級別
+    std::string log_file = "msa.log";      // 日誌檔案名稱
     
     // BAM標籤檢測結果
     bool tumor_has_methyl_tags = false;   // 腫瘤BAM是否有甲基化標籤

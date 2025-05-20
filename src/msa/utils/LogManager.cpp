@@ -16,7 +16,7 @@ LogManager& LogManager::getInstance() {
 }
 
 // 建構函數 - 預設初始化為 INFO 級別
-LogManager::LogManager() : currentLevel_(LogLevel::INFO), initialized_(false) {
+LogManager::LogManager() : currentLevel_(LogLevel::INFO_Level), initialized_(false) {
 }
 
 // 解構函數 - 關閉日誌檔案
@@ -59,7 +59,7 @@ void LogManager::initialize(LogLevel logLevel, const std::string& logFile) {
     initialized_ = true;
     
     // 記錄初始化訊息
-    log(LogLevel::INFO, "LogManager", "日誌系統已初始化，級別: " + logLevelToString(currentLevel_) +
+    log(LogLevel::INFO_Level, "LogManager", "日誌系統已初始化，級別: " + logLevelToString(currentLevel_) +
         (logFilePath_.empty() ? "" : ", 檔案: " + logFilePath_));
 }
 
@@ -90,7 +90,7 @@ void LogManager::log(LogLevel level, const std::string& module, const std::strin
               << module << "] " << message;
     
     // 輸出到標準錯誤 (對於WARN以上級別)
-    if (level >= LogLevel::WARN) {
+    if (level >= LogLevel::WARN_Level) {
         std::cerr << logStream.str() << std::endl;
     } else {
         // INFO和更低級別僅當初始化日誌系統時輸出到標準輸出
@@ -126,26 +126,26 @@ LogLevel LogManager::stringToLogLevel(const std::string& levelStr) {
     std::transform(level_lower.begin(), level_lower.end(), level_lower.begin(), 
         [](unsigned char c) { return std::tolower(c); });
     
-    if (level_lower == "trace") return LogLevel::TRACE;
-    if (level_lower == "debug") return LogLevel::DEBUG;
-    if (level_lower == "info")  return LogLevel::INFO;
-    if (level_lower == "warn")  return LogLevel::WARN;
-    if (level_lower == "error") return LogLevel::ERROR;
-    if (level_lower == "fatal") return LogLevel::FATAL;
+    if (level_lower == "trace") return LogLevel::TRACE_Level;
+    if (level_lower == "debug") return LogLevel::DEBUG_Level;
+    if (level_lower == "info")  return LogLevel::INFO_Level;
+    if (level_lower == "warn")  return LogLevel::WARN_Level;
+    if (level_lower == "error") return LogLevel::ERROR_Level;
+    if (level_lower == "fatal") return LogLevel::FATAL_Level;
     
     // 預設為 INFO
-    return LogLevel::INFO;
+    return LogLevel::INFO_Level;
 }
 
 // 將LogLevel轉換為字串
 std::string LogManager::logLevelToString(LogLevel level) {
     switch(level) {
-        case LogLevel::TRACE: return "TRACE";
-        case LogLevel::DEBUG: return "DEBUG";
-        case LogLevel::INFO:  return "INFO";
-        case LogLevel::WARN:  return "WARN";
-        case LogLevel::ERROR: return "ERROR";
-        case LogLevel::FATAL: return "FATAL";
+        case LogLevel::TRACE_Level: return "TRACE";
+        case LogLevel::DEBUG_Level: return "DEBUG";
+        case LogLevel::INFO_Level:  return "INFO";
+        case LogLevel::WARN_Level:  return "WARN";
+        case LogLevel::ERROR_Level: return "ERROR";
+        case LogLevel::FATAL_Level: return "FATAL";
         default:              return "UNKNOWN";
     }
 }

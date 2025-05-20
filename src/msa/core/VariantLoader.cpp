@@ -46,8 +46,14 @@ extern "C" {
 
 namespace msa::core {
 
+/*
+* 構造函數
+*/
 VariantLoader::VariantLoader() : hasBedFile_(false) {}
 
+/*
+* 載入VCF檔案
+*/
 std::vector<msa::VcfVariantInfo> VariantLoader::loadVCFs(
     const std::vector<std::string>& vcfPaths,
     const std::string& bedPath,
@@ -209,6 +215,11 @@ std::vector<msa::VcfVariantInfo> VariantLoader::loadVCFs(
     return variants;
 }
 
+/*
+* 確定變異類型
+* \param vcf_record VCF記錄
+* \return 變異類型
+*/
 std::string VariantLoader::determineVariantType(const bcf1_t* vcf_record) {
     // 從SVTYPE訊息欄位判斷是否為結構變異
     bcf_hdr_t* header = nullptr; // 這裡修改，header 需要從外部傳入，而不是從 vcf_record 獲取
@@ -248,6 +259,10 @@ std::string VariantLoader::determineVariantType(const bcf1_t* vcf_record) {
     return "UNKNOWN";  // 未知類型
 }
 
+/*
+* 載入BED檔案
+* \param bedPath BED檔案路徑
+*/
 void VariantLoader::loadBedRegions(const std::string& bedPath) {
     bedRegions_.clear();
     
@@ -303,6 +318,12 @@ void VariantLoader::loadBedRegions(const std::string& bedPath) {
     bedFile.close();
 }
 
+/*
+* 檢查變異是否在BED區域內
+* \param chrom 染色體名稱
+* \param pos 變異位置
+* \return 是否在BED區域內
+*/
 bool VariantLoader::isInBedRegions(const std::string& chrom, int pos) {
     // 如果沒有BED檔案，則視為所有區域都在範圍內
     if (!hasBedFile_ || bedRegions_.empty()) {

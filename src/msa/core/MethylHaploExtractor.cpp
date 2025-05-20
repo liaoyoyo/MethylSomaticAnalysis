@@ -242,10 +242,20 @@ static std::vector<MethylationRecord> parseMethylationRecords(const bam1_t *aln,
     return records;
 }
 
+/*
+* 構造函數
+* \param config 配置
+*/
 MethylHaploExtractor::MethylHaploExtractor(const msa::Config& config)
     : config_(config) {
 }
 
+/*
+* 從讀段中提取甲基化記錄
+* \param read 讀段
+* \param target_variant 目標變異
+* \param bam_source_id BAM來源ID
+*/
 std::vector<msa::MethylationSiteDetail> MethylHaploExtractor::extractFromRead(
     const bam1_t* read,
     const msa::VcfVariantInfo& target_variant,
@@ -319,6 +329,11 @@ std::vector<msa::MethylationSiteDetail> MethylHaploExtractor::extractFromRead(
     return details;
 }
 
+/*
+* 提取單倍型標籤
+* \param read 讀段
+* \return 單倍型標籤
+*/
 std::string MethylHaploExtractor::extractHaplotypeTag(const bam1_t* read) {
     // 獲取HP標籤
     uint8_t* hp_data = bam_aux_get(read, "HP");
@@ -377,6 +392,12 @@ std::string MethylHaploExtractor::extractHaplotypeTag(const bam1_t* read) {
     return "0";
 }
 
+/*
+* 確定等位基因類型
+* \param read 讀段
+* \param target_variant 目標變異
+* \param somatic_base 變異鹼基
+*/
 std::string MethylHaploExtractor::determineAlleleType(
     const bam1_t* read,
     const msa::VcfVariantInfo& target_variant,
@@ -408,6 +429,11 @@ std::string MethylHaploExtractor::determineAlleleType(
     }
 }
 
+/*
+* 分類甲基化狀態
+* \param meth_call 甲基化機率
+* \return 甲基化狀態
+*/
 std::string MethylHaploExtractor::classifyMethylationState(float meth_call) {
     if (meth_call >= config_.meth_high_threshold) {
         return "high";
@@ -418,6 +444,12 @@ std::string MethylHaploExtractor::classifyMethylationState(float meth_call) {
     }
 }
 
+/*
+* 將參考位置轉換為讀段位置
+* \param read 讀段
+* \param ref_pos 參考位置
+* \return 讀段位置
+*/
 int MethylHaploExtractor::refPosToReadPos(const bam1_t* read, int ref_pos) {
     // 讀段起始參考位置 (0-based)
     int start_ref_pos = read->core.pos;
@@ -467,6 +499,12 @@ int MethylHaploExtractor::refPosToReadPos(const bam1_t* read, int ref_pos) {
     return -1;
 }
 
+/*
+* 獲取讀段位置的鹼基
+* \param read 讀段
+* \param read_pos 讀段位置
+* \return 鹼基
+*/
 char MethylHaploExtractor::getBaseAtReadPos(const bam1_t* read, int read_pos) {
     // 獲取讀段序列
     uint8_t* seq = bam_get_seq(read);

@@ -145,7 +145,8 @@ MethylSomaticAnalysis/
 | `--min-allele`     | `-a` | `int`            | N  | **0** | **≥ 0** | **每個變異至少需有此數量 Tumor BAM 支持 ALT 讀數，才進行後續甲基化分析** |
 | **`--min-strand-reads`** | **—** | **`int`** | **N** | **1** | **≥ 0** | **每個 CpG 位點在正反鏈上各自至少需要的支持讀數 (用於 Level 1/2 分析前)** |
 | `--log-level`      | —    | `string`         | N  | info      | trace/debug/info/warn/error/fatal | 日誌級別                                           |
-| `--threads`        | `-j` | `int`            | N  | CPU cores | 1–N                               | 執行緒數                                           |
+| `--log-file`       | —    | `string`         | N  | msa.log   | 任意檔案名稱                              | 日誌檔案名稱                                       |
+| `--threads`        | `-j` | `int`            | N  | 0         | 1-256                               | 執行緒數                                           |
 | `--outdir`         | `-o` | `string`         | N  | ./results | —                                 | 輸出總路徑 (若 stdout 用 `-`，則此參數通常不與之同時使用) |
 | `--gzip-output`    | —    | `bool`           | N  | true      | true/false                        | 是否 gzip 壓縮 Level 1 & 2 TSV 輸出                  |
 

@@ -12,8 +12,16 @@ using namespace msa::utils;
 
 namespace msa::core {
 
+/**
+ * @brief 構造函數
+ */
 BAMValidator::BAMValidator() = default;
 
+/**
+ * @brief 檢查所有輸入文件
+ * \param config 配置
+ * \return 是否檢查成功
+ */
 bool BAMValidator::checkAllInputFiles(msa::Config& config) {
     bool success = true;
     
@@ -86,6 +94,14 @@ bool BAMValidator::checkAllInputFiles(msa::Config& config) {
     return success;
 }
 
+/**
+ * @brief 檢查BAM檔案中的甲基化標籤
+ * \param bamPath BAM檔案路徑
+ * \param fp BAM檔案指針
+ * \param hdr BAM標頭指針
+ * \param config 配置
+ * \return 是否檢測到甲基化標籤
+ */
 bool BAMValidator::checkMethylationTags(const std::string& bamPath, htsFile* fp, bam_hdr_t* hdr, msa::Config& config) {
        // 先重置文件指針
        if (bgzf_seek(fp->fp.bgzf, 0, SEEK_SET) < 0) {
@@ -134,6 +150,14 @@ bool BAMValidator::checkMethylationTags(const std::string& bamPath, htsFile* fp,
        return has_methyl_tags;
    }
 
+/**
+ * @brief 檢查BAM檔案中的單倍型標籤
+ * \param bamPath BAM檔案路徑
+ * \param fp BAM檔案指針
+ * \param hdr BAM標頭指針
+ * \param config 配置
+ * \return 是否檢測到單倍型標籤
+ */
 bool BAMValidator::checkHaplotypeTags(const std::string& bamPath, htsFile* fp, bam_hdr_t* hdr, msa::Config& config) {
     int hp_count = sampleCheckTag(bamPath, fp, hdr, "HP", 100, bamPath == config.tumor_bam);
     int ps_count = sampleCheckTag(bamPath, fp, hdr, "PS", 100, bamPath == config.tumor_bam);
@@ -155,6 +179,16 @@ bool BAMValidator::checkHaplotypeTags(const std::string& bamPath, htsFile* fp, b
     return has_hp_tags;
 }
 
+/**
+ * @brief 樣本檢查標籤
+ * \param bamPath BAM檔案路徑
+ * \param fp BAM檔案指針
+ * \param hdr BAM標頭指針
+ * \param tagName 標籤名稱
+ * \param sampleSize 取樣數量
+ * \param isTumorBam 是否為腫瘤BAM
+ * \return 檢測到的標籤數量
+ */
 int BAMValidator::sampleCheckTag(const std::string& bamPath, htsFile* fp, bam_hdr_t* hdr, 
                                const char* tagName, int sampleSize, bool isTumorBam) {
     // 重新定位到檔案開頭

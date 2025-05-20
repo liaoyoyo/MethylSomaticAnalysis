@@ -12,16 +12,26 @@ namespace fs = std::filesystem;
 
 namespace msa::core {
 
+/*
+* 構造函數
+*/
 BamFetcher::BamFetcher(const msa::Config& config)
     : config_(config), tumor_fp_(nullptr), normal_fp_(nullptr),
       tumor_hdr_(nullptr), normal_hdr_(nullptr),
       tumor_idx_(nullptr), normal_idx_(nullptr) {
 }
 
+/*
+* 析構函數
+*/
 BamFetcher::~BamFetcher() {
     closeBamFiles();
 }
 
+/*
+* 開啟BAM檔案
+* \return 是否成功開啟
+*/
 bool BamFetcher::openBamFiles() {
     // 開啟腫瘤BAM
     if (config_.tumor_bam != "-") {
@@ -77,6 +87,9 @@ bool BamFetcher::openBamFiles() {
     return true;
 }
 
+/*
+* 關閉BAM檔案
+*/
 void BamFetcher::closeBamFiles() {
     // 釋放腫瘤BAM資源
     if (tumor_idx_) {
@@ -111,6 +124,13 @@ void BamFetcher::closeBamFiles() {
     }
 }
 
+/*
+* 獲取變異周圍的讀段
+* \param variant 變異資訊
+* \param tumorReads 腫瘤讀段容器
+* \param normalReads 正常讀段容器
+* \return 是否成功獲取
+*/
 bool BamFetcher::fetchReadsAroundVariant(
     const msa::VcfVariantInfo& variant,
     std::vector<bam1_t*>& tumorReads,
@@ -153,11 +173,22 @@ bool BamFetcher::fetchReadsAroundVariant(
     ss << "變異 " << variant.chrom << ":" << variant.pos << " " << variant.ref << ">" << variant.alt 
        << " 區域取得: 腫瘤讀段=" << tumorReads.size() 
        << ", 正常讀段=" << normalReads.size();
-    LOG_INFO("BamFetcher", ss.str());
+    LOG_DEBUG("BamFetcher", ss.str());
     
     return true;
 }
 
+/*
+* 從指定區域獲取讀段
+* \param fp BAM檔案指針
+* \param hdr BAM標頭指針
+* \param idx BAM索引指針
+* \param chrom 染色體名稱
+* \param start 起始位置
+* \param end 結束位置
+* \param reads 讀段容器
+* \return 是否成功獲取
+*/
 bool BamFetcher::fetchReadsFromRegion(
     htsFile* fp,
     bam_hdr_t* hdr,
@@ -227,6 +258,11 @@ bool BamFetcher::fetchReadsFromRegion(
     return true;
 }
 
+/*
+* 獲取BAM索引
+* \param bamPath BAM檔案路徑
+* \return BAM索引指針
+*/
 hts_idx_t* BamFetcher::getBamIndex(const std::string& bamPath) {
     hts_idx_t* idx = nullptr;
     
@@ -247,6 +283,11 @@ hts_idx_t* BamFetcher::getBamIndex(const std::string& bamPath) {
     return idx;
 }
 
+/*
+* 檢查讀段是否有效
+* \param b 讀段指針
+* \return 是否有效
+*/
 bool BamFetcher::isReadValid(const bam1_t* b) {
     // 檢查是否為主要比對 (非輔助/次要比對)
     if (b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)) {
@@ -266,7 +307,13 @@ bool BamFetcher::isReadValid(const bam1_t* b) {
     return true;
 }
 
-// 新增重載函數的實現
+/*
+* 獲取變異周圍的讀段
+* \param variant 變異資訊
+* \param isTumor 是否為腫瘤樣本
+* \param window_size 窗口大小
+* \return 讀段容器
+*/
 std::vector<std::unique_ptr<bam1_t, std::function<void(bam1_t*)>>> BamFetcher::fetchReadsAroundVariant(
     const msa::VcfVariantInfo& variant,
     bool isTumor,
@@ -363,7 +410,7 @@ std::vector<std::unique_ptr<bam1_t, std::function<void(bam1_t*)>>> BamFetcher::f
     std::ostringstream ss;
     ss << "變異 " << variant.chrom << ":" << variant.pos << " " << variant.ref << ">" << variant.alt 
        << " 區域取得: " << (isTumor ? "腫瘤" : "正常") << "讀段=" << result.size();
-    LOG_INFO("BamFetcher", ss.str());
+    LOG_DEBUG("BamFetcher", ss.str());
     
     return result;
 }

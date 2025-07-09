@@ -10,6 +10,20 @@ MethylSomaticAnalysis 是一個用於分析甲基化與體細胞變異關聯性�
 - 針對高通量定序資料優化的記憶體管理和多執行緒處理
 - 支援多個 VCF 檔案的批次處理
 
+## 程式架構
+
+MSA 採用模組化設計，各組件分工明確，具備良好的可擴展性和維護性：
+
+![程式架構圖](images/architecture_diagram.md)
+
+### 核心模組說明
+
+- **主程式層**：負責整體流程控制和模組協調
+- **核心模組層**：實現主要分析功能，包括資料載入、驗證、處理和輸出
+- **工具模組層**：提供基礎設施支援，如記憶體管理和日誌系統
+- **資料類型層**：定義標準化的資料結構，確保模組間資料一致性
+- **外部依賴**：整合業界標準的高效能函式庫
+
 ## 系統需求
 
 - Ubuntu 20.04+ 或相容 Linux 發行版
@@ -60,6 +74,19 @@ make -j$(nproc)
 # 安裝（可選）
 sudo make install
 ```
+
+## 程式執行流程
+
+MSA 的完整執行流程如下圖所示，包含初始化、資料載入、並行處理和結果輸出四個主要階段：
+
+![程式流程圖](images/program_flowchart.md)
+
+### 流程說明
+
+1. **初始化階段**：解析參數、設置日誌、驗證輸入檔案
+2. **資料載入階段**：載入變異資訊、初始化記憶體池
+3. **並行處理階段**：多執行緒處理每個變異，提取甲基化和單倍型資訊
+4. **結果輸出階段**：生成三個層級的分析結果檔案
 
 ## 使用方法
 
@@ -174,61 +201,119 @@ results/
 
 ### 編譯錯誤
 
-- **未定義的 htslib 函數**：如遇到 `undefined reference to 'bam_aux2array'` 或 `undefined reference to 'bcf_get_alleles'` 等錯誤，請確保安裝的 htslib 版本 ≥ 1.17。可使用以下命令檢查：
-  ```bash
-  pkg-config --modversion htslib
-  ```
-  若版本過低或使用系統庫路徑不正確，建議手動編譯安裝最新版 htslib：
-  ```bash
-  git clone https://github.com/samtools/htslib.git
-  cd htslib
-  git checkout 1.17 # 或更新版本
-  autoreconf -i
-  ./configure --prefix=/usr/local
-  make
-  sudo make install
-  ```
-  然後重新配置 CMake 時指定 htslib 路徑：
-  ```bash
-  cmake -DCMAKE_BUILD_TYPE=Release -DHTSLIB_ROOT=/usr/local ..
-  ```
+**錯誤：找不到 htslib**
+```bash
+# 確認 htslib 安裝
+pkg-config --cflags --libs hts
 
-### BAM 檔案問題
+# 如果需要手動指定路徑
+cmake -DCMAKE_BUILD_TYPE=Release -DHTS_ROOT=/path/to/hts ..
+```
 
-- 確保 BAM 檔案已建立索引（.bai 檔案）
-- 檢查 BAM 檔案是否包含甲基化標籤（MM/ML）和單倍型標籤（HP/PS）
-- 若出現錯誤，可使用 `--log-level debug` 獲取更詳細的診斷信息
+**錯誤：C++17 不支援**
+```bash
+# 檢查編譯器版本
+g++ --version
 
-### 記憶體使用量調整
+# 更新 GCC
+sudo apt install gcc-11 g++-11
+export CC=gcc-11 CXX=g++-11
+```
 
-- 大型基因組分析可使用 `--max-read-depth` 限制每個區域的讀取深度
-- 使用 `--max-ram-gb` 限制最大記憶體使用量
+### 執行錯誤
 
-### 效能優化
+**錯誤：BAM 檔案沒有甲基化標籤**
+- 確認 BAM 檔案包含 MM 和 ML 標籤（ONT 資料）或 XM 標籤（Bismark 資料）
+- 使用 `samtools view` 檢查 BAM 檔案格式
 
-- 增加 `--threads` 參數可提高處理速度
-- 使用 `--bed` 參數限制分析區域，減少運算量
-- 若僅關注特定變異類型，可先過濾 VCF 檔案
+**錯誤：記憶體不足**
+- 減少 `--max-ram-gb` 設定
+- 減少 `--threads` 數量
+- 使用 `--bed` 限制分析區域
 
-## 開發與貢獻
+**錯誤：索引檔案遺失**
+```bash
+# 建立 BAM 索引
+samtools index input.bam
 
-本專案遵循 C++17 標準和模組化設計原則。若要貢獻：
+# 建立 VCF 索引
+tabix -p vcf input.vcf.gz
 
-1. Fork 專案並克隆至本地
-2. 建立功能分支：`git checkout -b feature/your-feature`
-3. 提交變更：`git commit -m 'Add some feature'`
-4. 推送到分支：`git push origin feature/your-feature`
-5. 提交 Pull Request
+# 建立參考基因組索引
+samtools faidx reference.fa
+```
 
-## 授權
+## 效能調校
 
-本專案採用 GNU GPLv3 授權條款發布。詳情請參閱 [LICENSE](LICENSE) 檔案。
+### 記憶體使用最佳化
+
+1. **調整記憶體池大小**：使用 `--max-ram-gb` 根據系統記憶體調整
+2. **限制分析區域**：使用 `--bed` 檔案只分析感興趣的區域
+3. **調整讀取深度限制**：使用 `--max-read-depth` 避免高深度區域消耗過多記憶體
+
+### 多執行緒效能
+
+1. **最佳執行緒數**：通常設為 CPU 核心數的 0.8-1.0 倍
+2. **I/O 密集任務**：對於網路儲存的 BAM 檔案，可能需要減少執行緒數
+3. **記憶體頻寬**：高執行緒數可能受限於記憶體頻寬
+
+### 建議的系統配置
+
+| 資料大小 | RAM | CPU 核心 | 儲存 | 預估時間 |
+|----------|-----|----------|------|----------|
+| < 10GB BAM | 16GB | 8-16 | SSD | 1-2 小時 |
+| 10-50GB BAM | 32GB | 16-32 | SSD | 2-6 小時 |
+| > 50GB BAM | 64GB+ | 32+ | NVMe SSD | 6+ 小時 |
+
+## 開發指南
+
+### 程式碼結構
+
+- `src/main.cpp`：主程式入口
+- `src/msa/core/`：核心分析模組
+- `src/msa/utils/`：工具函式和輔助類別
+- `include/msa/`：標頭檔案和型別定義
+- `tests/`：單元測試
+- `scripts/`：建置和部署腳本
+
+### 編碼標準
+
+- 遵循 C++17 標準
+- 使用 Google C++ Style Guide
+- 所有公開 API 需要 Doxygen 註解
+- 關鍵演算法需要單元測試覆蓋
+
+### 貢獻指南
+
+1. Fork 此儲存庫
+2. 創建功能分支 (`git checkout -b feature/amazing-feature`)
+3. 提交變更 (`git commit -m 'Add amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 開啟 Pull Request
+
+## 授權條款
+
+此專案採用 MIT 授權條款。詳細資訊請參閱 [LICENSE](LICENSE) 檔案。
 
 ## 引用
 
-若在學術研究中使用本工具，請引用：
+如果您在研究中使用了 MethylSomaticAnalysis，請引用：
 
 ```
-MethylSomaticAnalysis: A tool for analyzing the association between DNA methylation and somatic variants. 
-(2025). GitHub repository, https://github.com/liaoyoyo/MethylSomaticAnalysis
+[待補充論文引用資訊]
 ```
+
+## 聯絡資訊
+
+- 作者：[您的姓名]
+- Email：[您的Email]
+- 專案首頁：https://github.com/liaoyoyo/MethylSomaticAnalysis
+- 問題回報：https://github.com/liaoyoyo/MethylSomaticAnalysis/issues
+
+## 更新日誌
+
+### v1.0.0 (待發布)
+- 初始版本發布
+- 支援 ONT 和 Bismark 甲基化資料
+- 多層次分析輸出
+- 完整的並行處理支援
